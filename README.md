@@ -8,13 +8,15 @@ First, Download and unzip this repository or clone this repository to your local
 ```
 $ git clone https://github.com/checkmarx-ts/checkmarx-python-sdk.git
 ```
+```
 $ pip install CheckmarxPythonSDK
+```
 ```
 $ pip install -r requirments.txt
 ```
+```
 $ git clone https://github.com/jbrotsos/fixed_vulns_json_report.git
 ```
-
 
 Next, set up configuration (in e.g. ~/.Checkmarx/config.ini, or C:\\Users\\Administrator\\.Checkmarx\\config.ini)
 ```buildoutcfg
