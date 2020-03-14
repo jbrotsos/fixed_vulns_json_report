@@ -1,15 +1,23 @@
 # fixed_vulns_json_report
 
-Need python3
+# Notice
+Please use Python3
 
+# Quick Start
+First, Download and unzip this repository or clone this repository to your local drive.
+```
 $ git clone https://github.com/checkmarx-ts/checkmarx-python-sdk.git
+```
 $ pip install CheckmarxPythonSDK
-$ git clone https://github.com/jbrotsos/fixed_vulns_json_report.git
-
+```
 $ pip install -r requirments.txt
+```
+$ git clone https://github.com/jbrotsos/fixed_vulns_json_report.git
+```
 
-Next, set up configuration (in e.g. ~/.Checkmarx/config.ini, or C:\Users\Administrator\.Checkmarx\config.ini)
 
+Next, set up configuration (in e.g. ~/.Checkmarx/config.ini, or C:\\Users\\Administrator\\.Checkmarx\\config.ini)
+```buildoutcfg
 [checkmarx]
 base_url = http://localhost:80
 username = ******
@@ -23,8 +31,11 @@ scan_preset = Checkmarx Default
 configuration = Default Configuration
 team_full_name = /CxServer
 max_try = 3
+```
 
-$cd fixed_vulns_json_report
-$ python get_stats.py
+# Examples
+```Shell
+cd fixed_vulns_json_report
+python get_stats.py
+```
 
-Output is stored in list_of_vulns.json in the current directory

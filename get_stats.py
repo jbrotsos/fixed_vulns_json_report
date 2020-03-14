@@ -1,5 +1,18 @@
 """
+This script is intended to list all the scan results with the expected format:
 
+ {
+   project_name: xxxx,
+   SID: xxxx,
+   vuln_name: xxxx,
+   result: {
+        state:  xxx,
+        status: xxx
+   },
+   date: xxxxx
+}
+
+If a SID is not present in the new scan, it will update the status to be "Fixed"
 """
 import time
 import xmltodict
@@ -11,7 +24,13 @@ from CheckmarxPythonSDK.CxRestAPISDK import TeamAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ProjectsAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ScansAPI
 
-def create_fixed_elem (prev_list, current_list, date):
+
+def create_fixed_elements (prev_list, current_list, date):
+"""
+If a SID doesn't exist in a new scan (compared to the last scan), the SID was 'Fixed' or removed.
+Copy all the info from the previous element but change the status to Fixed.
+Also update the date of the scan
+"""
     for i in prev_list:
         for j in current_list:
             found = False
@@ -35,17 +54,20 @@ def create_fixed_elem (prev_list, current_list, date):
             current_list.append(newElement)
 
 def parse_xml (doc):
-# {
-#   project_name: xxxx,
-#   SID: xxxx,
-#   vuln_name: xxxx,
-#   result: {
-#        state:  xxx,
-#        status: xxx
-#   },
-#   date: xxxxx
-# },
+"""
+Parsing the XML output to form an element with the following format:
 
+ {
+   project_name: xxxx,
+   SID: xxxx,
+   vuln_name: xxxx,
+   result: {
+        state:  xxx,
+        status: xxx
+   },
+   date: xxxxx
+},
+"""
     if doc and 'CxXMLResults' in doc:
         vulnList = []
 
@@ -83,6 +105,14 @@ def parse_xml (doc):
     return [], "ERROR" 
 
 def get_project_results(file):
+"""
+- Get a list of all the projects
+- Get a list of all the Finished scans for each project
+- Get the results of the scan in an XML format
+- Parse through the results to create an element
+- Check to see if there are any elements that don't exist, if they don't, create a fixed element
+- Add the element to the report list that is conveted to a json string on return
+"""
     scan_api = ScansAPI()
     projects_api = ProjectsAPI()
     report = []
@@ -112,7 +142,7 @@ def get_project_results(file):
                     if document:
                         current_scan_results, date = parse_xml (document)
                         if last_scan_results:
-                            create_fixed_elem(last_scan_results, current_scan_results, date)
+                            create_fixed_elements(last_scan_results, current_scan_results, date)
                         report.append(current_scan_results)
                         
                     else:
@@ -127,6 +157,10 @@ def get_project_results(file):
     return (json.dumps(report))
 
 if __name__ == "__main__":
+"""
+Create a file that we can output the results to
+
+"""
 
     file = open("list_of_vulns.json","w")
 
