@@ -32,9 +32,9 @@ Copy all the info from the previous element but change the status to Fixed.
 Also update the date of the scan
 """
     for i in prev_list:
+        found = False
+   
         for j in current_list:
-            found = False
-
             if (i['SID'] == j['SID']):
                 found = True
                 break
