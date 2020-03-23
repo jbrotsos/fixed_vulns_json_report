@@ -17,6 +17,7 @@ If a SID is not present in the new scan, it will update the status to be "Fixed"
 import time
 import xmltodict
 import json
+import argparse
 
 from pathlib import Path
 
@@ -24,13 +25,12 @@ from CheckmarxPythonSDK.CxRestAPISDK import TeamAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ProjectsAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ScansAPI
 
-
 def create_fixed_elements (prev_list, current_list, date):
-"""
-If a SID doesn't exist in a new scan (compared to the last scan), the SID was 'Fixed' or removed.
-Copy all the info from the previous element but change the status to Fixed.
-Also update the date of the scan
-"""
+    """
+    If a SID doesn't exist in a new scan (compared to the last scan), the SID was 'Fixed' or removed.
+    Copy all the info from the previous element but change the status to Fixed.
+    Also update the date of the scan.  """
+
     for i in prev_list:
         found = False
    
@@ -54,20 +54,20 @@ Also update the date of the scan
             current_list.append(newElement)
 
 def parse_xml (doc):
-"""
-Parsing the XML output to form an element with the following format:
+    """
+    Parsing the XML output to form an element with the following format:
 
- {
-   project_name: xxxx,
-   SID: xxxx,
-   vuln_name: xxxx,
-   result: {
+    {
+      project_name: xxxx,
+      SID: xxxx,
+      vuln_name: xxxx,
+      result: {
         state:  xxx,
         status: xxx
-   },
-   date: xxxxx
-},
-"""
+      },
+    date: xxxxx
+    },
+    """
     if doc and 'CxXMLResults' in doc:
         vulnList = []
 
@@ -104,24 +104,27 @@ Parsing the XML output to form an element with the following format:
 
     return [], "ERROR" 
 
-def get_project_results(file):
-"""
-- Get a list of all the projects
-- Get a list of all the Finished scans for each project
-- Get the results of the scan in an XML format
-- Parse through the results to create an element
-- Check to see if there are any elements that don't exist, if they don't, create a fixed element
-- Add the element to the report list that is conveted to a json string on return
-"""
+def get_project_results():
+    """
+    - Get a list of all the projects
+    - Get a list of all the Finished scans for each project
+    - Get the results of the scan in an XML format
+    - Parse through the results to create an element
+    - Check to see if there are any elements that don't exist, if they don't, create a fixed element
+    - Add the element to the report list that is conveted to a json string on return
+    """
     scan_api = ScansAPI()
     projects_api = ProjectsAPI()
-    report = []
 
     projects = projects_api.get_all_project_details()
 
     for project in projects:
+        filename = "list_of_vulns-" + project.name + ".json"
+        file = open(filename,"w")
+
         current_scan_results = []
         last_scan_results = []
+        report = []
 
         scans = scan_api.get_all_scans_for_project(project.project_id, "Finished")
         scans.reverse()
@@ -154,18 +157,19 @@ def get_project_results(file):
 
             last_scan_results = current_scan_results
 
-    return (json.dumps(report))
+        file.write (json.dumps(report))
+
+        file.close()
+
+    return ()
 
 if __name__ == "__main__":
-"""
-Create a file that we can output the results to
+    """
+    Create a file that we can output the results to
+    """
 
-"""
+    get_project_results()
 
-    file = open("list_of_vulns.json","w")
+    
 
-    json_str = get_project_results(file)
-
-    file.write (json_str)
-
-    file.close()
+    
