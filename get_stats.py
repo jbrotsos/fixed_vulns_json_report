@@ -126,36 +126,43 @@ def get_project_results():
         last_scan_results = []
         report = []
 
-        scans = scan_api.get_all_scans_for_project(project.project_id, "Finished")
-        scans.reverse()
+        try:
+            scans = scan_api.get_all_scans_for_project(project.project_id, "Finished")
+            scans.reverse()
+        except:
+            print ("Exception found when getting list of scans for project: " + project.name)
+        
 
         for scan in scans:
-            scan_report = scan_api.register_scan_report(scan.id, "XML")
+            try:
+                scan_report = scan_api.register_scan_report(scan.id, "XML")
 
-            if scan_report and scan_report.report_id:
-                
-                while not scan_api.is_report_generation_finished(scan_report.report_id):
-                    time.sleep(1)
+                if scan_report and scan_report.report_id:
+                    
+                    while not scan_api.is_report_generation_finished(scan_report.report_id):
+                        time.sleep(1)
 
-                report_content = scan_api.get_report_by_id(scan_report.report_id)
+                    report_content = scan_api.get_report_by_id(scan_report.report_id)
 
-                if report_content:
-                    document = xmltodict.parse(report_content, force_list={'Query'})
+                    if report_content:
+                        document = xmltodict.parse(report_content, force_list={'Query'})
 
-                    if document:
-                        current_scan_results, date = parse_xml (document)
-                        if last_scan_results:
-                            create_fixed_elements(last_scan_results, current_scan_results, date)
-                        report.append(current_scan_results)
-                        
+                        if document:
+                            current_scan_results, date = parse_xml (document)
+                            if last_scan_results:
+                                create_fixed_elements(last_scan_results, current_scan_results, date)
+                            report.append(current_scan_results)
+                            
+                        else:
+                            print ("[ERROR] document parsing failed for " + str(scan.id))
                     else:
-                        print ("[ERROR] document parsing failed for " + str(scan.id))
+                        print ("[ERROR] report content failed for " + str(scan.id))
                 else:
-                    print ("[ERROR] report content failed for " + str(scan.id))
-            else:
-                print ("[ERROR] scan report not found for " + str(scan.id))
+                    print ("[ERROR] scan report not found for " + str(scan.id))
 
-            last_scan_results = current_scan_results
+                last_scan_results = current_scan_results
+            except:
+                print ("Exception when getting report of scan: " + str(scan.id) + " / project: " + project.name)
 
         file.write (json.dumps(report))
 
