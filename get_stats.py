@@ -18,6 +18,7 @@ import time
 import xmltodict
 import json
 import argparse
+import datetime
 
 from pathlib import Path
 
@@ -104,7 +105,7 @@ def parse_xml (doc):
 
     return [], "ERROR" 
 
-def get_project_results():
+def get_project_results(date):
     """
     - Get a list of all the projects
     - Get a list of all the Finished scans for each project
@@ -134,35 +135,41 @@ def get_project_results():
         
 
         for scan in scans:
-            try:
-                scan_report = scan_api.register_scan_report(scan.id, "XML")
 
-                if scan_report and scan_report.report_id:
-                    
-                    while not scan_api.is_report_generation_finished(scan_report.report_id):
-                        time.sleep(1)
+            # convert scan date from ISO 8601
+            scan_date = datetime.datetime.strptime(scan.date_and_time.finished_on, "%Y-%m-%dT%H:%M:%S.%f")
 
-                    report_content = scan_api.get_report_by_id(scan_report.report_id)
+            # if the scan date is greater than the date entered or if no date was inputted
+            if (not date or scan_date > date):
+                try:
+                    scan_report = scan_api.register_scan_report(scan.id, "XML")
 
-                    if report_content:
-                        document = xmltodict.parse(report_content, force_list={'Query'})
+                    if scan_report and scan_report.report_id:
+                        
+                        while not scan_api.is_report_generation_finished(scan_report.report_id):
+                            time.sleep(1)
 
-                        if document:
-                            current_scan_results, date = parse_xml (document)
-                            if last_scan_results:
-                                create_fixed_elements(last_scan_results, current_scan_results, date)
-                            report.append(current_scan_results)
-                            
+                        report_content = scan_api.get_report_by_id(scan_report.report_id)
+
+                        if report_content:
+                            document = xmltodict.parse(report_content, force_list={'Query'})
+
+                            if document:
+                                current_scan_results, date = parse_xml (document)
+                                if last_scan_results:
+                                    create_fixed_elements(last_scan_results, current_scan_results, date)
+                                report.append(current_scan_results)
+                                
+                            else:
+                                print ("[ERROR] document parsing failed for " + str(scan.id))
                         else:
-                            print ("[ERROR] document parsing failed for " + str(scan.id))
+                            print ("[ERROR] report content failed for " + str(scan.id))
                     else:
-                        print ("[ERROR] report content failed for " + str(scan.id))
-                else:
-                    print ("[ERROR] scan report not found for " + str(scan.id))
+                        print ("[ERROR] scan report not found for " + str(scan.id))
 
-                last_scan_results = current_scan_results
-            except:
-                print ("Exception when getting report of scan: " + str(scan.id) + " / project: " + project.name)
+                    last_scan_results = current_scan_results
+                except:
+                    print ("Exception when getting report of scan (possibly scan didn't run because no code changes): " + str(scan.id) + " / project: " + project.name)
 
         file.write (json.dumps(report))
 
@@ -170,13 +177,30 @@ def get_project_results():
 
     return ()
 
+def valid_date(s):
+    """
+    Validate the date passed as argument
+    """
+
+    try:
+        return datetime.datetime.strptime(s, "%Y-%m-%d")
+    except ValueError:
+        msg = "Not a valid date: '{0}'.".format(s)
+        raise argparse.ArgumentTypeError(msg)
+
 if __name__ == "__main__":
     """
     Create a file that we can output the results to
     """
 
-    get_project_results()
+    parser = argparse.ArgumentParser()
 
-    
+    parser.add_argument("-s", "--startdate", help="The Start Date - format YYYY-MM-DD", 
+                    required=False, 
+                    type=valid_date)
 
-    
+    args = parser.parse_args()
+
+    date = args.startdate
+
+    get_project_results(date)

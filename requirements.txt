@@ -1,1 +1,2 @@
 xmltodict==0.11.0
+CheckmarxPythonSDK==0.0.3
