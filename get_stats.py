@@ -123,6 +123,8 @@ def get_project_results(date):
         filename = "list_of_vulns-" + project.name + ".json"
         file = open(filename,"w")
 
+        print ("Scanning project: " + project.name + "... ")
+
         current_scan_results = []
         last_scan_results = []
         report = []
@@ -170,6 +172,8 @@ def get_project_results(date):
                     last_scan_results = current_scan_results
                 except:
                     print ("Exception when getting report of scan (possibly scan didn't run because no code changes): " + str(scan.id) + " / project: " + project.name)
+
+        print ("Finished")
 
         file.write (json.dumps(report))
 
