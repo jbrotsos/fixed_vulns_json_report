@@ -139,7 +139,11 @@ def get_project_results(date):
         for scan in scans:
 
             # convert scan date from ISO 8601
-            scan_date = datetime.datetime.strptime(scan.date_and_time.finished_on, "%Y-%m-%dT%H:%M:%S.%f")
+
+            if "." in scan.date_and_time.finished_on:
+                scan_date = datetime.datetime.strptime(scan.date_and_time.finished_on, "%Y-%m-%dT%H:%M:%S.%f")
+            else:
+                scan_date = datetime.datetime.strptime(scan.date_and_time.finished_on, "%Y-%m-%dT%H:%M:%S")
 
             # if the scan date is greater than the date entered or if no date was inputted
             if (not date or scan_date > date):
