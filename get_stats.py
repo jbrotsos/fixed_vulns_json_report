@@ -26,7 +26,7 @@ from CheckmarxPythonSDK.CxRestAPISDK import TeamAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ProjectsAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ScansAPI
 
-def create_fixed_elements (prev_list, current_list, date):
+def create_fixed_elements (prev_list, current_list, scan_start_date):
     """
     If a SID doesn't exist in a new scan (compared to the last scan), the SID was 'Fixed' or removed.
     Copy all the info from the previous element but change the status to Fixed.
@@ -51,7 +51,7 @@ def create_fixed_elements (prev_list, current_list, date):
             status['status'] = "Fixed"
 
             newElement['result'] = status
-            newElement['date'] = date
+            newElement['date'] = scan_start_date
             current_list.append(newElement)
 
 def parse_xml (doc):
@@ -138,6 +138,7 @@ def get_project_results(date):
 
         for scan in scans:
 
+            
             # convert scan date from ISO 8601
 
             if "." in scan.date_and_time.finished_on:
@@ -146,6 +147,9 @@ def get_project_results(date):
                 scan_date = datetime.datetime.strptime(scan.date_and_time.finished_on, "%Y-%m-%dT%H:%M:%S")
 
             # if the scan date is greater than the date entered or if no date was inputted
+            print (type(date))
+            print (type(scan_date))
+
             if (not date or scan_date > date):
                 try:
                     scan_report = scan_api.register_scan_report(scan.id, "XML")
@@ -161,9 +165,9 @@ def get_project_results(date):
                             document = xmltodict.parse(report_content, force_list={'Query'})
 
                             if document:
-                                current_scan_results, date = parse_xml (document)
+                                current_scan_results, scan_start_date = parse_xml (document)
                                 if last_scan_results:
-                                    create_fixed_elements(last_scan_results, current_scan_results, date)
+                                    create_fixed_elements(last_scan_results, current_scan_results, scan_start_date)
                                 report.append(current_scan_results)
                                 
                             else:
