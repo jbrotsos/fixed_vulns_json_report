@@ -4,18 +4,11 @@
 Please use Python3
 
 # Quick Start
-First, Download and unzip this repository or clone this repository to your local drive.
 ```
-$ git clone https://github.com/checkmarx-ts/checkmarx-python-sdk.git
-```
-```
-$ pip install CheckmarxPythonSDK
+$ git clone https://github.com/jbrotsos/fixed_vulns_json_report.git
 ```
 ```
 $ pip install -r requirments.txt
-```
-```
-$ git clone https://github.com/jbrotsos/fixed_vulns_json_report.git
 ```
 
 Next, set up configuration (in e.g. ~/.Checkmarx/config.ini, or C:\\Users\\Administrator\\.Checkmarx\\config.ini)
@@ -34,10 +27,17 @@ configuration = Default Configuration
 team_full_name = /CxServer
 max_try = 3
 ```
+# Optional Arguments
 
-# Examples
+* --startdate
+* --enddate
+
+Must be in format of YEAR-MONTH-DAY
+
+
+# Example
 ```Shell
 cd fixed_vulns_json_report
-python get_stats.py
+python get_stats.py --startdate 2020-01-01 --enddate 2020-12-31
 ```
 

@@ -105,7 +105,7 @@ def parse_xml (doc):
 
     return [], "ERROR" 
 
-def get_project_results(date):
+def get_project_results(user_startdate, user_enddate):
     """
     - Get a list of all the projects
     - Get a list of all the Finished scans for each project
@@ -119,9 +119,10 @@ def get_project_results(date):
 
     projects = projects_api.get_all_project_details()
 
+    filename = str(time.strftime("%Y%m%d-%H%M%S")) +  "_list_of_vulns.json"
+    file = open(filename,"w")
+
     for project in projects:
-        filename = "list_of_vulns-" + project.name + ".json"
-        file = open(filename,"w")
 
         print ("Scanning project: " + project.name + "... ")
 
@@ -138,7 +139,6 @@ def get_project_results(date):
 
         for scan in scans:
 
-            
             # convert scan date from ISO 8601
 
             if "." in scan.date_and_time.finished_on:
@@ -146,11 +146,11 @@ def get_project_results(date):
             else:
                 scan_date = datetime.datetime.strptime(scan.date_and_time.finished_on, "%Y-%m-%dT%H:%M:%S")
 
-            # if the scan date is greater than the date entered or if no date was inputted
-            print (type(date))
-            print (type(scan_date))
+            # if no start date entered or if the scan start date is greater than the user start date entered
+            # or 
+            # if no end date entered or if the scan start date is less than the user end date entered
 
-            if (not date or scan_date > date):
+            if (not user_startdate or scan_date > user_startdate) and (not user_enddate or scan_date < user_enddate):
                 try:
                     scan_report = scan_api.register_scan_report(scan.id, "XML")
 
@@ -183,9 +183,12 @@ def get_project_results(date):
 
         print ("Finished")
 
-        file.write (json.dumps(report))
+        reportStr = json.dumps(report)
 
-        file.close()
+        if (reportStr != "[]"):
+            file.write (json.dumps(report))
+
+    file.close()
 
     return ()
 
@@ -202,17 +205,22 @@ def valid_date(s):
 
 if __name__ == "__main__":
     """
-    Create a file that we can output the results to
+    Read in arguments if passed
     """
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-s", "--startdate", help="The Start Date - format YYYY-MM-DD", 
+    parser.add_argument("--startdate", help="The Start Date - format YYYY-MM-DD", 
+                    required=False, 
+                    type=valid_date)
+
+    parser.add_argument("--enddate", help="The End Date - format YYYY-MM-DD", 
                     required=False, 
                     type=valid_date)
 
     args = parser.parse_args()
 
-    date = args.startdate
+    user_startdate = args.startdate
+    user_enddate = args.enddate
 
-    get_project_results(date)
+    get_project_results(user_startdate, user_enddate)
