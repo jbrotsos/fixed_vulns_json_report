@@ -13,6 +13,9 @@ This script is intended to list all the scan results with the expected format:
 }
 
 If a SID is not present in the new scan, it will update the status to be "Fixed"
+
+It uses Checkmarx's support Python SDK.
+
 """
 import time
 import xmltodict
@@ -32,11 +35,11 @@ def create_fixed_elements (prev_list, current_list, scan_start_date):
     Copy all the info from the previous element but change the status to Fixed.
     Also update the date of the scan.  """
 
-    for i in prev_list:
+    for prev in prev_list:
         found = False
    
-        for j in current_list:
-            if (i['SID'] == j['SID']):
+        for current in current_list:
+            if (prev['SID'] == current['SID']):
                 found = True
                 break
 
@@ -139,6 +142,9 @@ def get_project_results(user_startdate, user_enddate):
 
         for scan in scans:
 
+            if (debug):
+                print ("Starting report for scan: " + str(scan.id) + " at " + str(datetime.datetime.now()))
+
             # convert scan date from ISO 8601
 
             if "." in scan.date_and_time.finished_on:
@@ -181,6 +187,9 @@ def get_project_results(user_startdate, user_enddate):
                 except:
                     print ("Exception when getting report of scan (possibly scan didn't run because no code changes): " + str(scan.id) + " / project: " + project.name)
 
+            if (debug):
+                print ("Ending report for scan: " + str(scan.id) + " at " + str(datetime.datetime.now()))
+
         print ("Finished")
 
         reportStr = json.dumps(report)
@@ -215,12 +224,17 @@ if __name__ == "__main__":
                     type=valid_date)
 
     parser.add_argument("--enddate", help="The End Date - format YYYY-MM-DD", 
-                    required=False, 
+                    required=False,
                     type=valid_date)
+
+    parser.add_argument('--debug', help='Print debug info', 
+                    action='store_true', 
+                    default=False)
 
     args = parser.parse_args()
 
     user_startdate = args.startdate
     user_enddate = args.enddate
+    debug = args.debug
 
     get_project_results(user_startdate, user_enddate)
