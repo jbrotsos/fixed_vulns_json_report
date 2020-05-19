@@ -29,7 +29,7 @@ from CheckmarxPythonSDK.CxRestAPISDK import TeamAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ProjectsAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ScansAPI
 
-def create_fixed_elements (prev_list, current_list, scan_start_date):
+def create_fixed_elements (prev_list, current_list, scan_start_date, myreport = []):
     """
     If a SID doesn't exist in a new scan (compared to the last scan), the SID was 'Fixed' or removed.
     Copy all the info from the previous element but change the status to Fixed.
@@ -43,21 +43,23 @@ def create_fixed_elements (prev_list, current_list, scan_start_date):
                 found = True
                 break
 
-        if found != True:
+        if found == False:
             newElement = {}
-            newElement['project_name'] = i['project_name']
-            newElement['SID'] = i['SID']
-            newElement['name'] = i['name'] 
+            newElement['project_name'] = prev['project_name']
+            newElement['SID'] = prev['SID']
+            newElement['name'] = prev['name']
+            newElement['severity'] = prev['severity']
 
             status = {}
-            status['state'] = i['result']['state']
+            status['state'] = prev['result']['state']
             status['status'] = "Fixed"
 
             newElement['result'] = status
             newElement['date'] = scan_start_date
+            myreport.append(newElement)
             current_list.append(newElement)
 
-def parse_xml (doc):
+def parse_xml (doc, myreport = []):
     """
     Parsing the XML output to form an element with the following format:
 
@@ -65,6 +67,7 @@ def parse_xml (doc):
       project_name: xxxx,
       SID: xxxx,
       vuln_name: xxxx,
+      severity: xxxx,
       result: {
         state:  xxx,
         status: xxx
@@ -73,13 +76,14 @@ def parse_xml (doc):
     },
     """
     if doc and 'CxXMLResults' in doc:
-        vulnList = []
+        scanList = []
 
         xml_results = doc['CxXMLResults']
 
         if xml_results and 'Query' in xml_results:
             for query in xml_results['Query']:
                 results = query['Result']
+
                 list_results = []
                 if isinstance(results, list):
                     list_results = results
@@ -91,9 +95,9 @@ def parse_xml (doc):
                     vulnElement['project_name'] = xml_results["@ProjectName"]
 
                     vulnElement['SID'] = result["Path"]["@SimilarityId"]
-                    
-                    vulnElement['name'] = query["@name"]
 
+                    vulnElement['name'] = query["@name"]
+                    vulnElement['severity'] = result["@Severity"]
                     status = {}
                     status['state'] = result["@state"]
                     status['status'] = result["@Status"]
@@ -101,10 +105,11 @@ def parse_xml (doc):
                     vulnElement['result'] = status
 
                     vulnElement['date'] = xml_results["@ScanStart"]
+                    myreport.append (vulnElement)
+                    scanList.append (vulnElement)
 
-                    vulnList.append(vulnElement)
-
-        return (vulnList, xml_results["@ScanStart"])
+        return (scanList, xml_results["@ScanStart"])
+        #return (xml_results["@ScanStart"])
 
     return [], "ERROR" 
 
@@ -125,13 +130,14 @@ def get_project_results(user_startdate, user_enddate):
     filename = str(time.strftime("%Y%m%d-%H%M%S")) +  "_list_of_vulns.json"
     file = open(filename,"w")
 
+    report = []
+
     for project in projects:
 
         print ("Scanning project: " + project.name + "... ")
 
         current_scan_results = []
         last_scan_results = []
-        report = []
 
         try:
             scans = scan_api.get_all_scans_for_project(project.project_id, "Finished")
@@ -143,7 +149,8 @@ def get_project_results(user_startdate, user_enddate):
         for scan in scans:
 
             if (debug):
-                print ("Starting report for scan: " + str(scan.id) + " at " + str(datetime.datetime.now()))
+                start_time = datetime.datetime.now()
+                print ("Starting report for scan: " + str(scan.id))
 
             # convert scan date from ISO 8601
 
@@ -163,7 +170,7 @@ def get_project_results(user_startdate, user_enddate):
                     if scan_report and scan_report.report_id:
                         
                         while not scan_api.is_report_generation_finished(scan_report.report_id):
-                            time.sleep(1)
+                            time.sleep(.300)
 
                         report_content = scan_api.get_report_by_id(scan_report.report_id)
 
@@ -171,10 +178,13 @@ def get_project_results(user_startdate, user_enddate):
                             document = xmltodict.parse(report_content, force_list={'Query'})
 
                             if document:
-                                current_scan_results, scan_start_date = parse_xml (document)
+                                current_scan_results, scan_start_date = parse_xml (document, report)
+                                #scan_start_date = parse_xml (document, report)
                                 if last_scan_results:
-                                    create_fixed_elements(last_scan_results, current_scan_results, scan_start_date)
-                                report.append(current_scan_results)
+                                    create_fixed_elements(last_scan_results, current_scan_results, scan_start_date, report)
+
+                                #if (str(current_scan_results) != "[]"):
+                                #    report.append(current_scan_results)
                                 
                             else:
                                 print ("[ERROR] document parsing failed for " + str(scan.id))
@@ -183,19 +193,18 @@ def get_project_results(user_startdate, user_enddate):
                     else:
                         print ("[ERROR] scan report not found for " + str(scan.id))
 
+                    
                     last_scan_results = current_scan_results
                 except:
                     print ("Exception when getting report of scan (possibly scan didn't run because no code changes): " + str(scan.id) + " / project: " + project.name)
 
             if (debug):
-                print ("Ending report for scan: " + str(scan.id) + " at " + str(datetime.datetime.now()))
+                print ("Ending report for scan: " + str(scan.id) + " took " + str(datetime.datetime.now() - start_time))
 
-        print ("Finished")
+        print ("... Finished " + project.name)
 
-        reportStr = json.dumps(report)
 
-        if (reportStr != "[]"):
-            file.write (json.dumps(report))
+    file.write (json.dumps(report, sort_keys=True, indent=4))
 
     file.close()
 
