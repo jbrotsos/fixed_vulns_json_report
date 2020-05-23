@@ -29,11 +29,21 @@ from CheckmarxPythonSDK.CxRestAPISDK import TeamAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ProjectsAPI
 from CheckmarxPythonSDK.CxRestAPISDK import ScansAPI
 
+state = {"0" : "To Verify",
+         "1" : "Not Exploitable",
+         "2" : "Confirmed",
+         "3" : "Urgent",
+         "4" : "Proposed Not Exploitable"
+}
+
 def create_fixed_elements (prev_list, current_list, scan_start_date, myreport = []):
     """
     If a SID doesn't exist in a new scan (compared to the last scan), the SID was 'Fixed' or removed.
     Copy all the info from the previous element but change the status to Fixed.
-    Also update the date of the scan.  """
+    Also update the date of the scan.  
+    
+    Problem here is that it creates a new element each time when if it was fixed in a previous scan
+    """
 
     for prev in prev_list:
         found = False
@@ -53,6 +63,14 @@ def create_fixed_elements (prev_list, current_list, scan_start_date, myreport = 
             status = {}
             status['state'] = prev['result']['state']
             status['status'] = "Fixed"
+
+            """
+            Probably need to revisit this, but basically I don't change the date if it's already been fixed
+            """
+            if not prev['result']['date']:
+                status['date'] = scan_start_date
+            else:
+                status['date'] = prev['result']['date']
 
             newElement['result'] = status
             newElement['date'] = scan_start_date
@@ -99,8 +117,9 @@ def parse_xml (doc, myreport = []):
                     vulnElement['name'] = query["@name"]
                     vulnElement['severity'] = result["@Severity"]
                     status = {}
-                    status['state'] = result["@state"]
+                    status['state'] = state[result["@state"]]
                     status['status'] = result["@Status"]
+                    status['date'] = ""
 
                     vulnElement['result'] = status
 
@@ -109,7 +128,6 @@ def parse_xml (doc, myreport = []):
                     scanList.append (vulnElement)
 
         return (scanList, xml_results["@ScanStart"])
-        #return (xml_results["@ScanStart"])
 
     return [], "ERROR" 
 
@@ -179,12 +197,8 @@ def get_project_results(user_startdate, user_enddate):
 
                             if document:
                                 current_scan_results, scan_start_date = parse_xml (document, report)
-                                #scan_start_date = parse_xml (document, report)
                                 if last_scan_results:
                                     create_fixed_elements(last_scan_results, current_scan_results, scan_start_date, report)
-
-                                #if (str(current_scan_results) != "[]"):
-                                #    report.append(current_scan_results)
                                 
                             else:
                                 print ("[ERROR] document parsing failed for " + str(scan.id))
@@ -193,7 +207,6 @@ def get_project_results(user_startdate, user_enddate):
                     else:
                         print ("[ERROR] scan report not found for " + str(scan.id))
 
-                    
                     last_scan_results = current_scan_results
                 except:
                     print ("Exception when getting report of scan (possibly scan didn't run because no code changes): " + str(scan.id) + " / project: " + project.name)
@@ -202,7 +215,6 @@ def get_project_results(user_startdate, user_enddate):
                 print ("Ending report for scan: " + str(scan.id) + " took " + str(datetime.datetime.now() - start_time))
 
         print ("... Finished " + project.name)
-
 
     file.write (json.dumps(report, sort_keys=True, indent=4))
 
@@ -246,4 +258,8 @@ if __name__ == "__main__":
     user_enddate = args.enddate
     debug = args.debug
 
+    begin_time = datetime.datetime.now()
+
     get_project_results(user_startdate, user_enddate)
+
+    print ("Total time to complete report: " + str(datetime.datetime.now() - begin_time))
